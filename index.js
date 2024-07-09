@@ -1,10 +1,23 @@
 // TODO: harus tambah service worker
+// This works on all devices/browsers, and uses IndexedDBShim as a final fallback
+var indexedDB =
+  window.indexedDB ||
+  window.mozIndexedDB ||
+  window.webkitIndexedDB ||
+  window.msIndexedDB ||
+  window.shimIndexedDB;
+const dbName = "jadwalAdzanDB";
+const obj_n_store_register_kota = "register_kota";
+var db_ver = Date.now();
 
-let db;
-const dbName = "jadwal_adzan";
-
-const URL_LIST_KOTA =
-  "https://raw.githubusercontent.com/lakuapik/jadwalsholatorg/master/kota.json";
+function get_tanggal_sekarang() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(now.getDay() + 1).padStart(2, "0")}`;
+}
+console.log(get_tanggal_sekarang());
 
 function get_url_jadwal_adzan(kota) {
   const now = new Date();
@@ -14,85 +27,198 @@ function get_url_jadwal_adzan(kota) {
   return `https://raw.githubusercontent.com/lakuapik/jadwalsholatorg/master/adzan/${kota}/${formattedDate}.json`;
 }
 
-const request = indexedDB.open(dbName, 1);
+function add_register_kota(kota) {
+  // Open (or create) the database
+  var open = indexedDB.open(dbName, ++db_ver);
 
-request.onupgradeneeded = function (event) {
-  db = event.target.result;
-  if (!db.objectStoreNames.contains("data_kota")) {
-    db.createObjectStore("data_kota", { keyPath: "id", autoIncrement: true });
-  }
-};
-
-request.onsuccess = async function (event) {
-  db = event.target.result;
-  console.log("Database opened successfully");
-
-  try {
-    let data_kota = await getDataFromDB("data_kota");
-    if (!data_kota.length) {
-      console.log("Data not found in IndexedDB, fetching from URL...");
-      data_kota = await fetchDataAndStore(URL_LIST_KOTA, "data_kota");
+  // Create the schema
+  open.onupgradeneeded = function () {
+    var db = open.result;
+    if (!db.objectStoreNames.contains(obj_n_store_register_kota)) {
+      var store = db.createObjectStore(obj_n_store_register_kota, {
+        keyPath: "id",
+      });
     }
-    // console.log("data_kota:", data_kota);
-    const select_kota = document.getElementById("select_kota");
-    // Kosongkan opsi dulu
-    select_kota.innerHTML = "";
-    // Masukan opsi kota dari list
-    data_kota.forEach((kota) => {
-      const e = document.createElement("option");
-      e.value = kota.item;
-      e.textContent = kota.item;
-      select_kota.appendChild(e);
-    });
-  } catch (error) {
-    console.error("Error:", error);
-  }
-};
+  };
 
-request.onerror = function (event) {
-  console.error("Database error: ", event.target.errorCode);
-};
+  open.onsuccess = function () {
+    // Start a new transaction
+    var db = open.result;
+    var tx = db.transaction(obj_n_store_register_kota, "readwrite");
+    var store = tx.objectStore(obj_n_store_register_kota);
 
-async function fetchDataAndStore(url, data_point_store) {
-  const response = await fetch(url);
-  const data = await response.json();
-  await putDataInDB(data_point_store, data);
-  return data;
+    console.log("adding", kota);
+    store.put({ id: kota });
+
+    // Query the data
+    // var getKota = store.getAll();
+
+    // getKota.onsuccess = function () {
+    //   console.log(getKota.result); // => "John"
+    // };
+
+    // Close the db when the transaction is done
+    tx.oncomplete = function () {
+      db.close();
+    };
+  };
 }
 
-async function putDataInDB(objectName, data) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([objectName], "readwrite");
-    const objectStore = transaction.objectStore(objectName);
-
-    data.forEach((item) => {
-      objectStore.put({ item });
+function fetch_github_jadwal(kota) {
+  fetch(get_url_jadwal_adzan(kota))
+    .then((res) => {
+      return res.json();
+    })
+    .then((data) => {
+      const obj_name_jadwal = "jadwal_" + kota;
+      // Open (or create) the database
+      var open = indexedDB.open(dbName, ++db_ver);
+      open.onsuccess = function () {
+        var db = open.result;
+        if (!db.objectStoreNames.contains(obj_name_jadwal)) {
+          var store = db.createObjectStore(obj_name_jadwal, {
+            keyPath: "id",
+          });
+        }
+        var tx = db.transaction(obj_name_jadwal, "readwrite");
+        var store = tx.objectStore(obj_name_jadwal);
+        data.forEach((e) => {
+          store.put({ id: e.tanggal, data: e });
+        });
+        tx.oncomplete = function () {
+          db.close();
+          get_jadwal_kota(kota);
+        };
+      };
     });
+}
 
-    transaction.oncomplete = function (event) {
-      resolve("Data added to the database successfully");
+function get_jadwal_kota(kota) {
+  const obj_name_jadwal = "jadwal_" + kota;
+  // Open (or create) the database
+  var open = indexedDB.open(dbName, ++db_ver);
+
+  // Create the schema
+  open.onupgradeneeded = function () {
+    var db = open.result;
+    if (!db.objectStoreNames.contains(obj_name_jadwal)) {
+      var store = db.createObjectStore(obj_name_jadwal, {
+        keyPath: "id",
+      });
+    }
+  };
+
+  open.onsuccess = function () {
+    // Start a new transaction
+    var db = open.result;
+    if (!db.objectStoreNames.contains(obj_name_jadwal)) {
+      var store = db.createObjectStore(obj_name_jadwal, {
+        keyPath: "id",
+      });
+    }
+    var tx = db.transaction(obj_name_jadwal, "readwrite");
+    var store = tx.objectStore(obj_name_jadwal);
+
+    // var getJadwal = store.getAll();
+    var getJadwal = store.get(get_tanggal_sekarang());
+    getJadwal.onsuccess = function () {
+      // console.log(getJadwal.result);
+      // return;
+
+      // Jika kosong ambil data dari guthib
+      if (typeof getJadwal.result != "object") {
+        console.log("fetch data", kota);
+        fetch_github_jadwal(kota);
+      } else {
+        // Data ketemu
+        console.log(kota, getJadwal.result);
+        // getJadwal.result.forEach((e) => {
+        //   console.log(e);
+        // });
+        appendCardToContainer(
+          "container_list_adzan",
+          kota,
+          getJadwal.result.id,
+          getJadwal.result.data
+        );
+      }
     };
 
-    transaction.onerror = function (event) {
-      reject("Transaction not opened due to error: " + transaction.error);
+    // console.log("adding", kota);
+    // store.put({ id: kota });
+
+    // // Query the data
+    // var getKota = store.getAll();
+
+    // getKota.onsuccess = function () {
+    //   console.log(getKota.result); // => "John"
+    // };
+
+    // Close the db when the transaction is done
+    tx.oncomplete = function () {
+      db.close();
     };
+  };
+
+  open.onerror = function (err) {
+    console.error(err);
+  };
+}
+
+function proses_registered_kota(list_kota) {
+  list_kota.forEach((e) => {
+    console.log(e.id);
+    get_jadwal_kota(e.id);
   });
 }
 
-async function getDataFromDB(objectName) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([objectName]);
-    const objectStore = transaction.objectStore(objectName);
-    const request = objectStore.getAll();
+function get_registered_kota() {
+  // Kosongkan container card jadwal
+  document.getElementById("container_list_adzan").innerHTML = "";
 
-    request.onsuccess = function (event) {
-      resolve(request.result);
+  // Open (or create) the database
+  var open = indexedDB.open(dbName, ++db_ver);
+
+  // Create the schema
+  open.onupgradeneeded = function () {
+    var db = open.result;
+    if (!db.objectStoreNames.contains(obj_n_store_register_kota)) {
+      var store = db.createObjectStore(obj_n_store_register_kota, {
+        keyPath: "id",
+      });
+    }
+  };
+
+  open.onsuccess = function () {
+    // Start a new transaction
+    var db = open.result;
+    var tx = db.transaction(obj_n_store_register_kota, "readwrite");
+    var store = tx.objectStore(obj_n_store_register_kota);
+
+    // Query the data
+    var getKota = store.getAll();
+
+    getKota.onsuccess = function () {
+      proses_registered_kota(getKota.result);
+      // console.log(getKota.result); // => "John"
     };
 
-    request.onerror = function (event) {
-      reject("Unable to retrieve data from the database: " + request.error);
+    // Close the db when the transaction is done
+    tx.oncomplete = function () {
+      db.close();
     };
-  });
+  };
+}
+
+get_registered_kota();
+
+function prevent_submit(event_form) {
+  event_form.preventDefault();
+  const selected_new_kota = document.getElementById("select_kota").value;
+  console.log("Tambah jadwal kota", selected_new_kota);
+
+  add_register_kota(selected_new_kota);
+  get_jadwal_kota(selected_new_kota);
 }
 
 function appendCardToContainer(containerId, cardTitle, cardSubtitle, schedule) {
@@ -143,20 +269,4 @@ function appendCardToContainer(containerId, cardTitle, cardSubtitle, schedule) {
 
   // Append card to the container
   document.getElementById(containerId).appendChild(card);
-}
-
-/* form */
-function prevent_submit(event) {
-  event.preventDefault();
-  const selected_new_kota = document.getElementById("select_kota").value;
-  console.log("Tambah jadwal kota", selected_new_kota);
-
-  const obj_name_jadwal = "jadwal_" + selected_new_kota;
-
-  if (!db.objectStoreNames.contains(obj_name_jadwal)) {
-    db.createObjectStore(obj_name_jadwal, {
-      keyPath: "id",
-      autoIncrement: true,
-    });
-  }
 }
