@@ -1,5 +1,19 @@
-// TODO: harus tambah service worker
-// This works on all devices/browsers, and uses IndexedDBShim as a final fallback
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/service-worker.js").then(
+      function (registration) {
+        console.log(
+          "Registrasi sw berhasil: ",
+          registration.scope
+        );
+      },
+      function (err) {
+        console.log("Registrasi sw gagal: ", err);
+      }
+    );
+  });
+}
+
 var indexedDB =
   window.indexedDB ||
   window.mozIndexedDB ||
@@ -15,7 +29,7 @@ function get_tanggal_sekarang() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
     2,
     "0"
-  )}-${String(now.getDay() + 1).padStart(2, "0")}`;
+  )}-${String(now.getDate() + 1).padStart(2, "0")}`;
 }
 console.log(get_tanggal_sekarang());
 
@@ -132,10 +146,7 @@ function get_jadwal_kota(kota) {
       } else {
         // Data ketemu
         console.log(kota, getJadwal.result);
-        // getJadwal.result.forEach((e) => {
-        //   console.log(e);
-        // });
-        appendCardToContainer(
+        add_card_jadwal_to(
           "container_list_adzan",
           kota,
           getJadwal.result.id,
@@ -143,16 +154,6 @@ function get_jadwal_kota(kota) {
         );
       }
     };
-
-    // console.log("adding", kota);
-    // store.put({ id: kota });
-
-    // // Query the data
-    // var getKota = store.getAll();
-
-    // getKota.onsuccess = function () {
-    //   console.log(getKota.result); // => "John"
-    // };
 
     // Close the db when the transaction is done
     tx.oncomplete = function () {
@@ -221,13 +222,11 @@ function prevent_submit(event_form) {
   get_jadwal_kota(selected_new_kota);
 }
 
-function appendCardToContainer(containerId, cardTitle, cardSubtitle, schedule) {
-  // Create card element
+function add_card_jadwal_to(containerId, cardTitle, cardSubtitle, schedule) {
   const card = document.createElement("div");
   card.className = "col-lg-4 col-md-6 col-sm-12";
-
   const cardInner = `
-        <div class="card shadow">
+        <div class="card shadow mb-2">
             <div class="card-body">
                 <h5 class="card-title">${cardTitle}</h5>
                 <h6 class="card-subtitle mb-2 text-body-secondary">${cardSubtitle}</h6>
@@ -264,7 +263,6 @@ function appendCardToContainer(containerId, cardTitle, cardSubtitle, schedule) {
             </div>
         </div>
     `;
-
   card.innerHTML = cardInner;
 
   // Append card to the container
