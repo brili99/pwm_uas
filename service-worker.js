@@ -1,13 +1,13 @@
-const CACHE_NAME = "my-site-cache-v1";
+const CACHE_NAME = "jadwal-adzan-cache-v1";
 const urlsToCache = [
-  "/",
-  "/index.js",
-  "/service-worker.js",
-  "/favicon.ico",
-  "/libs/bootstrap.bundle.min.js",
-  "/libs/bootstrap.bundle.min.js.map",
-  "/libs/bootstrap.min.css",
-  "/libs/bootstrap.min.css.map",
+  "./",
+  "./index.js",
+  "./service-worker.js",
+  "./favicon.ico",
+  "./libs/bootstrap.bundle.min.js",
+  "./libs/bootstrap.bundle.min.js.map",
+  "./libs/bootstrap.min.css",
+  "./libs/bootstrap.min.css.map",
 ];
 
 self.addEventListener("install", function (event) {
@@ -33,7 +33,7 @@ self.addEventListener("fetch", function (event) {
 });
 
 self.addEventListener("activate", function (event) {
-  var cacheWhitelist = ["my-site-cache-v1"];
+  var cacheWhitelist = ["jadwal-adzan-cache-v1"];
 
   event.waitUntil(
     caches.keys().then(function (cacheNames) {
