@@ -2,7 +2,6 @@ const CACHE_NAME = "jadwal-adzan-cache-v1";
 const urlsToCache = [
   "./",
   "./index.js",
-  "./service-worker.js",
   "./favicon.ico",
   "./libs/bootstrap.bundle.min.js",
   "./libs/bootstrap.bundle.min.js.map",
