@@ -2,10 +2,7 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {
     navigator.serviceWorker.register("service-worker.js").then(
       function (registration) {
-        console.log(
-          "Registrasi sw berhasil: ",
-          registration.scope
-        );
+        console.log("Registrasi sw berhasil: ", registration.scope);
       },
       function (err) {
         console.log("Registrasi sw gagal: ", err);
@@ -25,11 +22,11 @@ const obj_n_store_register_kota = "register_kota";
 var db_ver = Date.now();
 
 function get_tanggal_sekarang() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
-    2,
-    "0"
-  )}-${String(now.getDate() + 1).padStart(2, "0")}`;
+  let currentDate = new Date();
+  let year = currentDate.getFullYear();
+  let month = (currentDate.getMonth() + 1).toString().padStart(2, "0");
+  let day = currentDate.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 console.log(get_tanggal_sekarang());
 
